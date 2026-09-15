@@ -14,25 +14,27 @@ export function TopTabs() {
 
   return (
     <header className="border-b border-white/10" style={{ background: "var(--nav-bg)" }}>
-      <div className="mx-auto flex max-w-4xl items-center justify-between gap-6 px-6 py-3.5">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5">
+      <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-4 py-3 sm:gap-6 sm:px-6 sm:py-3.5">
+        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5">
           <div
-            className="flex h-8 w-8 items-center justify-center rounded-full"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
             style={{ background: "linear-gradient(135deg, var(--accent-dark), var(--accent-light))" }}
           >
             <span className="text-[13px] font-extrabold text-white">S</span>
           </div>
-          <span className="text-[13.5px] font-bold tracking-wide text-white">株式会社サンプル</span>
+          <span className="hidden text-[13.5px] font-bold tracking-wide whitespace-nowrap text-white sm:inline">
+            株式会社サンプル
+          </span>
         </Link>
 
-        <nav className="flex items-center gap-1.5">
+        <nav className="flex min-w-0 items-center gap-0.5 overflow-x-auto sm:gap-1.5">
           {TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="rounded-full px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap"
+                className="shrink-0 rounded-full px-2.5 py-1.5 text-[12px] font-semibold whitespace-nowrap sm:px-3.5 sm:py-2 sm:text-[13px]"
                 style={active ? { background: "var(--accent)", color: "#fff" } : { color: "rgba(255,255,255,0.65)" }}
               >
                 {tab.label}

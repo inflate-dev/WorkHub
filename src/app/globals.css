@@ -36,9 +36,14 @@
   --font-sans: var(--font-noto-sans-jp);
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
+  overflow-x: hidden;
 }
 
 a {
