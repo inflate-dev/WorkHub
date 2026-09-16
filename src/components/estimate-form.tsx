@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FAULT_CATEGORY_OPTIONS, FAULT_CONFIG, type FaultCategory, type FaultOption } from "@/lib/faults";
 import { formatYen } from "@/lib/format";
-import { CheckIcon, UploadIcon } from "@/components/icons";
+import { CheckIcon, CloseIcon, PlusIcon, UploadIcon } from "@/components/icons";
 
 interface EstimateResult {
   category: FaultCategory;
@@ -12,15 +12,51 @@ interface EstimateResult {
   total: number;
 }
 
+interface PhotoEntry {
+  id: string;
+  file: File;
+  url: string;
+}
+
+let photoIdSeq = 1;
+
 export function EstimateForm() {
   const [category, setCategory] = useState<FaultCategory | "">("");
   const [primaryId, setPrimaryId] = useState<string>("");
   const [additionalIds, setAdditionalIds] = useState<string[]>([]);
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [result, setResult] = useState<EstimateResult | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const config = category ? FAULT_CONFIG[category] : null;
-  const photoPreviewUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+
+  useEffect(() => {
+    return () => {
+      photos.forEach((p) => URL.revokeObjectURL(p.url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleAddPhotos(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const added = Array.from(fileList).map((file) => ({
+      id: `photo-${photoIdSeq++}`,
+      file,
+      url: URL.createObjectURL(file),
+    }));
+    setPhotos((prev) => [...prev, ...added]);
+    if (photoInputRef.current) photoInputRef.current.value = "";
+  }
+
+  function handleRemovePhoto(id: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((p) => p.id !== id);
+    });
+  }
 
   function handleCategoryChange(value: string) {
     setCategory(value as FaultCategory);
@@ -124,29 +160,56 @@ export function EstimateForm() {
         )}
 
         <div>
-          <label className="mb-2 block text-[13px] font-semibold text-[var(--text)]">写真を添付(任意)</label>
-          <label
-            htmlFor="fault-photo"
-            className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-dashed p-6 text-center"
-            style={{ borderColor: "var(--border-strong)" }}
-          >
-            {photoPreviewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoPreviewUrl} alt="添付プレビュー" className="h-28 w-28 rounded-lg object-cover" />
-            ) : (
+          <label className="mb-2 block text-[13px] font-semibold text-[var(--text)]">写真を添付(任意・複数可)</label>
+
+          <input
+            id="fault-photo"
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => handleAddPhotos(e.target.files)}
+          />
+
+          {photos.length === 0 ? (
+            <label
+              htmlFor="fault-photo"
+              className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-dashed p-6 text-center"
+              style={{ borderColor: "var(--border-strong)" }}
+            >
               <UploadIcon color="var(--text-tertiary)" />
-            )}
-            <span className="mt-1 text-[12.5px] text-[var(--text-tertiary)]">
-              {photo ? photo.name : "クリックして写真を選択(スマホのカメラ撮影可)"}
-            </span>
-            <input
-              id="fault-photo"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-            />
-          </label>
+              <span className="mt-1 text-[12.5px] text-[var(--text-tertiary)]">
+                クリックして写真を選択(スマホのカメラ撮影可・複数選択可)
+              </span>
+            </label>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {photos.map((p) => (
+                <div key={p.id} className="relative h-24 w-24 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.url} alt={p.file.name} className="h-24 w-24 rounded-xl object-cover" />
+                  <button
+                    type="button"
+                    onClick={(e) => handleRemovePhoto(p.id, e)}
+                    aria-label={`${p.file.name}を削除`}
+                    className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white"
+                  >
+                    <CloseIcon color="#fff" />
+                  </button>
+                </div>
+              ))}
+
+              <label
+                htmlFor="fault-photo"
+                className="flex h-24 w-24 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-[1.5px] border-dashed text-center"
+                style={{ borderColor: "var(--border-strong)" }}
+              >
+                <PlusIcon color="var(--text-tertiary)" />
+                <span className="text-[11px] text-[var(--text-tertiary)]">追加</span>
+              </label>
+            </div>
+          )}
         </div>
 
         <button
@@ -191,7 +254,11 @@ export function EstimateForm() {
 
             <p className="mt-3 text-[13px] leading-relaxed text-[var(--text-secondary)]">{config.note}</p>
 
-            {photo && <p className="mt-2 text-[12px] text-[var(--text-tertiary)]">添付写真: {photo.name}(確認用に担当者へ共有されます)</p>}
+            {photos.length > 0 && (
+              <p className="mt-2 text-[12px] text-[var(--text-tertiary)]">
+                添付写真: {photos.length}枚(確認用に担当者へ共有されます)
+              </p>
+            )}
 
             <p className="mt-4 text-[11.5px] leading-relaxed text-[var(--text-tertiary)]">
               ※ MVPのためダミー金額です。実際の金額は現地確認後にご案内します。
